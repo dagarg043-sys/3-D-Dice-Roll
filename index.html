@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Dice Overlay</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;font-family:Arial,sans-serif;color:#fff}
+body{display:flex;align-items:center;justify-content:center}
+.wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px;text-align:center}
+.scene{width:150px;height:150px;perspective:700px}
+.die{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateX(-22deg) rotateY(-32deg)}
+.face{position:absolute;inset:0;border-radius:22px;background:linear-gradient(145deg,#fff,#d7d7d7);border:3px solid #b8b8b8;box-shadow:inset 0 0 18px #999;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:17px;gap:5px;backface-visibility:hidden}
+.dot{width:19px;height:19px;border-radius:50%;background:#e21d2f;align-self:center;justify-self:center;box-shadow:inset -2px -2px 3px #79000a}
+.f1{transform:translateZ(75px)}
+.f6{transform:rotateY(180deg) translateZ(75px)}
+.f2{transform:rotateY(90deg) translateZ(75px)}
+.f5{transform:rotateY(-90deg) translateZ(75px)}
+.f3{transform:rotateX(90deg) translateZ(75px)}
+.f4{transform:rotateX(-90deg) translateZ(75px)}
+.face .dot:nth-child(1){grid-area:1/1}.face .dot:nth-child(2){grid-area:1/3}.face .dot:nth-child(3){grid-area:2/2}.face .dot:nth-child(4){grid-area:3/1}.face .dot:nth-child(5){grid-area:3/3}.face .dot:nth-child(6){grid-area:2/1}
+.result{font-weight:900;font-size:38px;letter-spacing:1px;text-shadow:0 3px 10px #000}
+.status{font-size:14px;font-weight:700;background:rgba(0,0,0,.62);padding:7px 12px;border-radius:999px}
+.small{font-size:11px;opacity:.8;background:rgba(0,0,0,.5);padding:4px 8px;border-radius:6px}
+@keyframes tumble{0%{transform:rotateX(-22deg) rotateY(-32deg) scale(1)}35%{transform:rotateX(500deg) rotateY(420deg) scale(1.12)}70%{transform:rotateX(820deg) rotateY(740deg) scale(1.08)}100%{transform:var(--end-transform) scale(1)}}
+.rolling{animation:tumble 1.25s cubic-bezier(.2,.7,.15,1) both}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="scene"><div id="die" class="die">
+    <div class="face f1"><i class="dot"></i></div>
+    <div class="face f2"><i class="dot"></i><i class="dot"></i></div>
+    <div class="face f3"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+    <div class="face f4"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+    <div class="face f5"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+    <div class="face f6"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+  </div></div>
+  <div id="result" class="result">🎲 READY</div>
+  <div id="status" class="status">Connecting…</div>
+  <div class="small">ROLL THE DICE</div>
+</div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const statusEl=document.getElementById('status'), die=document.getElementById('die'), result=document.getElementById('result');
+const faces={1:[-22,-32],2:[-22,-122],3:[-112,-32],4:[68,-32],5:[-22,58],6:[-22,148]};
+let conn=null, lastRotation={x:-22,y:-32};
+function setStatus(s){statusEl.textContent=s}
+function showRoll(n){
+  const rot=faces[n]||faces[1];
+  die.classList.remove('rolling'); void die.offsetWidth;
+  die.style.setProperty('--end-transform',`rotateX(${rot[0]+720}deg) rotateY(${rot[1]+720}deg)`);
+  die.classList.add('rolling'); result.textContent='🎲 '+n;
+  setTimeout(()=>{die.classList.remove('rolling');die.style.transform=`rotateX(${rot[0]}deg) rotateY(${rot[1]}deg)`;},1300);
+}
+const room='dice-'+Math.random().toString(36).slice(2,8);
+const peer=new Peer(room);
+peer.on('open',id=>setStatus('Controller code: '+id));
+peer.on('connection',c=>{
+  if(conn) try{conn.close()}catch(e){}
+  conn=c;
+  setStatus('Controller connected ✓');
+  c.on('data',data=>{if(data&&data.type==='roll'&&Number(data.value)>=1&&Number(data.value)<=6)showRoll(Number(data.value))});
+  c.on('close',()=>{conn=null;setStatus('Controller disconnected')});
+});
+peer.on('error',e=>setStatus('Connection error — refresh overlay'));
+</script>
+</body>
+</html>

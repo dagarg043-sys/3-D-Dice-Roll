@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dice Controller</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#10172b,#242e4b);font-family:Arial,sans-serif;color:#fff;display:flex;align-items:center;justify-content:center;padding:22px}
+.card{width:min(100%,420px);background:#ffffff12;border:1px solid #ffffff30;border-radius:24px;padding:24px;box-shadow:0 20px 60px #0005}
+h1{margin:0 0 8px;font-size:28px}p{line-height:1.45;color:#d9e0f4}
+label{display:block;font-weight:700;margin:18px 0 8px}
+input{width:100%;padding:14px;border-radius:12px;border:1px solid #7783a7;background:#0b1122;color:white;font-size:16px}
+button{width:100%;border:0;border-radius:14px;padding:16px;margin-top:12px;font-weight:800;font-size:17px;cursor:pointer}
+.connect{background:#dce7ff;color:#111a32}.roll{background:linear-gradient(90deg,#ff344d,#ff7a35);color:white;font-size:24px;padding:22px;margin-top:22px}
+.roll:disabled{opacity:.4}.status{margin-top:16px;padding:11px;border-radius:10px;background:#0003;font-size:14px}
+.hint{font-size:12px;color:#b9c5e5;margin-top:12px}
+</style>
+</head>
+<body><main class="card">
+<h1>🎲 Dice Controller</h1>
+<p>Overlay ko Prism mein open karo. Overlay par jo controller code dikh raha hai, use yahan daalo.</p>
+<label for="code">Controller code</label>
+<input id="code" placeholder="Example: dice-ab12cd" autocomplete="off">
+<button class="connect" id="connect">CONNECT TO OVERLAY</button>
+<button class="roll" id="roll" disabled>🎲 ROLL DICE</button>
+<div class="status" id="status">Not connected</div>
+<div class="hint">Tip: Prism overlay par code chhota dikh sakta hai; zarurat ho toh overlay ko pehle browser mein kholo aur code note kar lo.</div>
+</main>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const code=document.getElementById('code'), connectBtn=document.getElementById('connect'), rollBtn=document.getElementById('roll'), statusEl=document.getElementById('status');
+let peer=null, conn=null;
+function status(s){statusEl.textContent=s}
+connectBtn.onclick=()=>{
+  const id=code.value.trim();
+  if(!id){status('Pehle overlay ka controller code daalo.');return}
+  if(conn)try{conn.close()}catch(e){}
+  if(peer)try{peer.destroy()}catch(e){}
+  rollBtn.disabled=true; status('Connecting…');
+  peer=new Peer();
+  peer.on('open',()=>{conn=peer.connect(id,{reliable:true});conn.on('open',()=>{status('Connected ✓ Ab dice roll karo!');rollBtn.disabled=false});conn.on('error',()=>{status('Connect nahi hua. Code check karke dobara try karo.');rollBtn.disabled=true});conn.on('close',()=>{status('Connection band ho gaya.');rollBtn.disabled=true})});
+  peer.on('error',()=>{status('Connection error. Overlay refresh karke naya code try karo.');rollBtn.disabled=true});
+};
+rollBtn.onclick=()=>{
+  if(!conn||!conn.open)return;
+  const n=Math.floor(Math.random()*6)+1;
+  conn.send({type:'roll',value:n,at:Date.now()});
+  status('Dice rolled! Result: '+n);
+};
+</script>
+</body></html>
